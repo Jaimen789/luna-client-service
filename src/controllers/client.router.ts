@@ -147,21 +147,22 @@ router.put("/remove_group", jwtVerify(['Admin', 'Manager']), expressAsyncHandler
         console.log("groupName: ", groupsToRemove);
         console.log("clientId: ", clientId);
 
-
         try {
-            const client = await ClientModel.findOne({id: clientId});
+            const client = await ClientModel.findOne({ id: clientId }).select("-__v");
 
-            if(client){
+            if (client) {
+                console.log("found client", client);
                 const project = client.projects.find((project) => {
                     return project.id == projectId;
                 });
 
-                if(project){
-
+                if (project) {
+                    console.log("found project", project);
                     project.assignedGroups = project.assignedGroups?.filter((group) => {
                         return !groupsToRemove.includes(group.groupName);
                     });
 
+                    console.log("found project after and before save", project);
                     await client.save();
 
                     res.status(200).send(project);
@@ -173,7 +174,7 @@ router.put("/remove_group", jwtVerify(['Admin', 'Manager']), expressAsyncHandler
             }
         } catch (error) {
             console.log('error: ', error);
-            res.status(500).send("Internal server error removing group from clients project");
+            res.status(500).send("Internal server error removing group from client's project");
         }
     }
 ));
@@ -241,13 +242,33 @@ router.post("/add_group", jwtVerify(['Admin', 'Manager']), expressAsyncHandler(
             console.log("received client id: ", clientId);
             const client = await ClientModel.findOne({ id: clientId });
 
+
             if(client) {
                 const project = client.projects.find((project) => {
                     return project.id == projectId;
                 });
 
                 if(project) {
-                    project.assignedGroups?.push(...newGroups);
+                    console.log("group is: ", newGroups);
+                    for (const newGroup of newGroups) {
+                        if (!newGroup.id) {
+                            console.log('new group does not have an id!');
+                        } else {
+                            console.log('new group does have an id and id for: ' + newGroup.groupName + ' is: ' + newGroup.id);
+                        }
+
+                        const tempId = newGroup.id;
+                        console.log('tempId is: ', tempId);
+
+                        console.log('temp group: ', newGroup );
+                        project.assignedGroups?.push(newGroup);
+                        console.log("tempGroup id is: ", tempId);
+                        if(project.assignedGroups)
+                            project.assignedGroups[project.assignedGroups?.length - 1].id = tempId;
+                        console.log('project after: ', project );
+                    }
+                    console.log('new project: ', project);
+                    
                     await client.save();
 
                     res.status(201).send(project);
@@ -260,6 +281,7 @@ router.post("/add_group", jwtVerify(['Admin', 'Manager']), expressAsyncHandler(
             }
 
         } catch (error) {
+            console.log('error is: ', error);
             res.status(500).send("Internal server error adding group to clients project");
         }
     } 
